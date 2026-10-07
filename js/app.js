@@ -60,7 +60,6 @@ const el = {
   manualLocation: $('manual-location'),
   manualAttendees: $('manual-attendees'),
   settings: $('settings-dialog'),
-  tplPreChecks: $('tpl-prechecks'),
   tplAgenda: $('tpl-agenda'),
   summaryRule: $('summary-rule'),
   summaryReset: $('summary-reset-btn'),
@@ -413,7 +412,7 @@ function searchableText(m) {
     m.freeMemo,
     m.minutes,
     ...m.agenda.map((a) => `${a.title} ${a.memo}`),
-    ...m.preChecks.map((p) => `${p.text} ${p.note}`),
+    ...m.agenda.map((a) => a.detail),
     ...m.decisions.map((d) => d.text),
     ...m.tasks.map((t) => `${t.title} ${t.assignee}`),
   ]
@@ -550,6 +549,7 @@ function renderDetailTabs() {
     tab.classList.toggle('is-active', active);
     tab.setAttribute('aria-pressed', String(active));
   }
+  el.qtForm.hidden = ui.tab === 'pre';
 }
 
 function onMetaTimeChange() {
@@ -656,50 +656,6 @@ function itemActions(listKey, id, index, length, prefix, removeOpts) {
   );
 }
 
-function preCheckRow(item, index, length) {
-  const id = item.id;
-  const li = h('li', { class: `item-row${item.checked ? ' is-checked' : ''}` });
-  const cb = h('input', {
-    type: 'checkbox',
-    checked: item.checked,
-    'aria-label': '確認済み',
-    dataset: { key: `pc-check-${id}` },
-    onchange: () => {
-      li.classList.toggle('is-checked', cb.checked);
-      editItem('preChecks', id, (x) => {
-        x.checked = cb.checked;
-      });
-    },
-  });
-  const text = h('input', {
-    type: 'text',
-    value: item.text,
-    placeholder: '確認事項',
-    'aria-label': '確認事項',
-    dataset: { key: `pc-text-${id}` },
-    oninput: () => editItem('preChecks', id, (x) => {
-      x.text = text.value;
-    }),
-  });
-  const note = h('input', {
-    type: 'text',
-    class: 'note',
-    value: item.note,
-    placeholder: 'メモ',
-    'aria-label': `${item.text || '確認事項'}のメモ`,
-    dataset: { key: `pc-note-${id}` },
-    oninput: () => editItem('preChecks', id, (x) => {
-      x.note = note.value;
-    }),
-  });
-  li.append(
-    h('label', { class: 'check-box' }, cb),
-    h('div', { class: 'item-fields' }, text, note),
-    itemActions('preChecks', id, index, length, 'pc'),
-  );
-  return li;
-}
-
 function agendaEditRow(item, index, length) {
   const id = item.id;
   const title = h('input', {
@@ -712,14 +668,27 @@ function agendaEditRow(item, index, length) {
       x.title = title.value;
     }),
   });
+  const detail = h('textarea', {
+    class: 'detail-area autogrow',
+    value: item.detail,
+    placeholder: '詳細（論点・確認したいこと・資料など）',
+    'aria-label': `アジェンダ${index + 1}の詳細`,
+    dataset: { key: `ag-detail-${id}` },
+    oninput: () => {
+      editItem('agenda', id, (x) => {
+        x.detail = detail.value;
+      });
+      autogrow(detail);
+    },
+  });
   return h(
     'li',
     { class: 'item-row no-check' },
     h('span', { class: 'item-num' }, `${index + 1}.`),
-    h('div', { class: 'item-fields' }, title),
+    h('div', { class: 'item-fields' }, title, detail),
     itemActions('agenda', id, index, length, 'ag', () => {
       const a = findItem('agenda', id);
-      return a && a.memo.trim() ? { confirmText: `「${a.title || '無題'}」を削除しますか？ メモも削除されます` } : {};
+      return a && (a.memo.trim() || a.detail.trim()) ? { confirmText: `「${a.title || '無題'}」を削除しますか？ 詳細・メモも削除されます` } : {};
     }),
   );
 }
@@ -733,23 +702,8 @@ function addItem(listKey, item, focusKey) {
 
 function buildPre() {
   const m = ui.draft;
-  const checks = h('ul', { class: 'item-list' }, m.preChecks.map((x, i) => preCheckRow(x, i, m.preChecks.length)));
   const agenda = h('ol', { class: 'item-list' }, m.agenda.map((x, i) => agendaEditRow(x, i, m.agenda.length)));
   const out = [
-    panel(
-      '事前確認事項',
-      {},
-      m.preChecks.length ? checks : h('p', { class: 'hint' }, '確認事項はありません'),
-      h('button', {
-        type: 'button',
-        class: 'btn small',
-        dataset: { key: 'pc-add' },
-        onclick: () => {
-          const id = newId();
-          addItem('preChecks', { id, text: '', checked: false, note: '' }, `pc-text-${id}`);
-        },
-      }, '項目を追加'),
-    ),
     panel(
       'アジェンダ',
       {},
@@ -760,7 +714,7 @@ function buildPre() {
         dataset: { key: 'ag-add' },
         onclick: () => {
           const id = newId();
-          addItem('agenda', { id, title: '', memo: '' }, `ag-title-${id}`);
+          addItem('agenda', { id, title: '', detail: '', memo: '' }, `ag-title-${id}`);
         },
       }, 'アジェンダを追加'),
     ),
@@ -792,7 +746,7 @@ function agendaMemo(item, index) {
   const ta = h('textarea', {
     class: 'memo-area autogrow',
     value: item.memo,
-    placeholder: 'メモ',
+    placeholder: 'メモ・議事録（マイクボタンで音声入力できます）',
     'aria-label': `${item.title || 'アジェンダ'}のメモ`,
     dataset: { key: `ag-memo-${id}` },
     oninput: () => {
@@ -812,6 +766,7 @@ function agendaMemo(item, index) {
       dataset: { agendaId: id },
     },
     h('h3', { class: 'panel-title' }, `${index + 1}. ${item.title || '（無題）'}`),
+    item.detail && item.detail.trim() ? h('p', { class: 'agenda-detail' }, item.detail) : null,
     ta,
   );
 }
@@ -1035,7 +990,7 @@ function buildDuring() {
   const main = h('div', { class: 'during-main' });
   if (m.agenda.length) main.append(...m.agenda.map(agendaMemo));
   else {
-    main.append(panel('アジェンダ', {}, h('p', { class: 'hint' }, 'アジェンダはありません。「事前」タブで追加できます')));
+    main.append(panel('アジェンダ', {}, h('p', { class: 'hint' }, 'アジェンダはありません。「アジェンダ」タブで追加できます')));
   }
   main.append(memoPanel('自由メモ', 'free-memo', 'freeMemo', 'アジェンダ以外のメモ'), buildDecisions(), buildTasksPanel());
   out.push(h('div', { class: 'during-layout' }, nav, main));
@@ -1204,8 +1159,8 @@ function addQuickTask(e) {
   el.qtAssignee.value = '';
   el.qtDue.value = '';
   el.qtTitle.focus();
-  if (ui.tab !== 'pre') renderBody();
-  showToast(ui.tab === 'pre' ? 'タスクを追加しました（会議中・事後タブに表示されます）' : 'タスクを追加しました', { duration: 2000 });
+  renderBody();
+  showToast('タスクを追加しました', { duration: 2000 });
 }
 
 async function sendToTaskapp(ids) {
@@ -1614,7 +1569,6 @@ function onSyncStatus(status) {
 
 function renderSettings() {
   const s = store.getSettings();
-  setValue(el.tplPreChecks, s.template.preChecks.join('\n'));
   setValue(el.tplAgenda, s.template.agenda.join('\n'));
   setValue(el.summaryRule, s.summaryRule);
   setValue(el.clientId, s.oauthClientId || '');
@@ -1758,9 +1712,6 @@ function bindEvents() {
   el.mic.addEventListener('click', onMicClick);
 
   el.settingsBtn.addEventListener('click', openSettings);
-  el.tplPreChecks.addEventListener('change', () => {
-    store.updateSettings({ template: { preChecks: parseLines(el.tplPreChecks.value) } });
-  });
   el.tplAgenda.addEventListener('change', () => {
     store.updateSettings({ template: { agenda: parseLines(el.tplAgenda.value) } });
   });

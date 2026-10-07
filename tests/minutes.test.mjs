@@ -45,7 +45,7 @@ describe('buildMinutesPrompt', () => {
   test('要約ルールが先頭、続いて各セクションが順に並ぶ', () => {
     const md = buildMinutesPrompt(fullMeeting(), settings);
     assert.ok(md.startsWith(settings.summaryRule));
-    const order = ['# 会議メモ', '## 会議情報', '## 事前確認事項', '## アジェンダ別メモ', '## 自由メモ', '## 決定事項', '## タスク'];
+    const order = ['# 会議メモ', '## 会議情報', '## アジェンダ別メモ', '## 自由メモ', '## 決定事項', '## タスク'];
     let pos = -1;
     for (const h of order) {
       const i = md.indexOf(`\n${h}\n`);
@@ -64,9 +64,17 @@ describe('buildMinutesPrompt', () => {
     );
   });
 
-  test('事前確認事項はチェック状態とメモを含む', () => {
+  test('事前確認事項は出力しない', () => {
     const md = buildMinutesPrompt(fullMeeting(), settings);
-    assert.equal(section(md, '## 事前確認事項'), '- [x] 会議の目的 — メモ: 進捗共有\n- [ ] 持ち越し事項');
+    assert.ok(!md.includes('事前確認事項'));
+    assert.ok(!md.includes('会議の目的'));
+  });
+
+  test('アジェンダの詳細はメモの前に出力する', () => {
+    const m = fullMeeting();
+    m.agenda[0].detail = '前回の課題\n2点';
+    const md = buildMinutesPrompt(m, settings);
+    assert.ok(section(md, '## アジェンダ別メモ').startsWith('### 1. 前回の振り返り\n\n詳細: 前回の課題\n  2点\n\n特になし'));
   });
 
   test('アジェンダは番号付き見出し、空メモは（メモなし）', () => {
@@ -103,7 +111,7 @@ describe('buildMinutesPrompt', () => {
       section(md, '## 会議情報'),
       ['- タイトル: （無題）', '- 日時: 未設定', '- 場所: 未設定', '- 参加者: 未設定'].join('\n'),
     );
-    for (const h of ['## 事前確認事項', '## アジェンダ別メモ', '## 自由メモ', '## 決定事項', '## タスク']) {
+    for (const h of ['## アジェンダ別メモ', '## 自由メモ', '## 決定事項', '## タスク']) {
       assert.equal(section(md, h), 'なし', h);
     }
   });
@@ -120,7 +128,6 @@ describe('buildMinutesPrompt', () => {
       },
       settings,
     );
-    assert.equal(section(md, '## 事前確認事項'), 'なし');
     assert.equal(section(md, '## アジェンダ別メモ'), '### 1. （無題）\n\nメモだけ');
     assert.equal(section(md, '## 自由メモ'), 'なし');
     assert.equal(section(md, '## 決定事項'), 'なし');

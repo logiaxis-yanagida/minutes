@@ -138,9 +138,9 @@ function normalizePreCheck(r) {
 }
 
 function normalizeAgendaItem(r) {
-  if (typeof r === 'string') return { id: '', title: r, memo: '' };
+  if (typeof r === 'string') return { id: '', title: r, detail: '', memo: '' };
   if (!r || typeof r !== 'object') return null;
-  return { id: itemId(r), title: str(r.title), memo: str(r.memo) };
+  return { id: itemId(r), title: str(r.title), detail: str(r.detail), memo: str(r.memo) };
 }
 
 function normalizeDecision(r) {
@@ -321,7 +321,7 @@ function isNewerShared(remoteAt, localAt) {
 function expandTemplate(template) {
   return {
     preChecks: template.preChecks.map((text) => ({ id: newId(), text, checked: false, note: '' })),
-    agenda: template.agenda.map((title) => ({ id: newId(), title, memo: '' })),
+    agenda: template.agenda.map((title) => ({ id: newId(), title, detail: '', memo: '' })),
   };
 }
 

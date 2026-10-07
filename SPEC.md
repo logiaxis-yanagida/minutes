@@ -49,8 +49,8 @@ Meeting {
   id, title, start: ISO|null, end: ISO|null, location: string,
   attendees: string[], description: string,          // description はカレンダー説明文（参考表示）
   calendarEventId: string|null,
-  preChecks: [{ id, text, checked: bool, note }],
-  agenda: [{ id, title, memo }],
+  preChecks: [{ id, text, checked: bool, note }],   // 画面・議事録化から外した（データ互換のため保持）
+  agenda: [{ id, title, detail, memo }],             // detail＝アジェンダタブで入力する詳細
   freeMemo: string,
   decisions: [{ id, text }],
   tasks: [{ id, title, assignee, due: 'YYYY-MM-DD'|null, done: bool,
@@ -142,11 +142,11 @@ taskapp `gcal.js` の認証部分を移植。SCOPE は `https://www.googleapis.c
 
 - ヘッダ：アプリ名「議事録」、同期状態、設定ボタン
 - 会議一覧：タブ「今日」「予定」「過去」「すべて」、検索、カード（タイトル・日時・場所・ステータスバッジ・未完了タスク数）、右下 FAB「＋ 新規会議」→「カレンダーから作成」／「手動で作成」
-- 会議詳細：上部に会議情報（編集可）とステータス選択、タブ「事前」「会議中」「事後」
-  - 事前：事前確認事項（チェック＋メモ、追加・削除・上下移動）、アジェンダ編集、カレンダー説明文（参考）
-  - 会議中：アジェンダごとのメモ（大きな textarea）、自由メモ、決定事項、タスク
+- 会議詳細：上部に会議情報（編集可）とステータス選択、タブ「アジェンダ」「会議中」「事後」
+  - アジェンダ：各項目のタイトル＋詳細（複数行）の編集、追加・削除・上下移動、カレンダー説明文（参考）。タスクのクイック追加は出さない
+  - 会議中：アジェンダごとにタイトル・詳細（読み取り表示）とメモ（大きな textarea、音声入力可）、自由メモ、決定事項、タスク
   - 事後：「議事録化用にコピー」、プレビュー、最終議事録の貼り戻し（保存でステータス「議事録完了」）、タスク一覧と taskapp 送信（個別・一括）
-  - タスクのクイック追加は全タブ共通（下部）
+  - タスクのクイック追加は会議中・事後タブの下部
   - 幅 900px 以上：会議中タブは左にアジェンダ一覧、右に選択アジェンダのメモ＋自由メモ等。それ未満は縦1カラム
 - マイクボタン：画面右下に浮遊（会議詳細で表示）。押すと直近フォーカス欄に挿入
 - 設定（`<dialog>`）：テンプレ編集、要約ルール、Google（クライアントID・カレンダーID・サインイン・今すぐ同期）、taskapp 連携（有効・既定カテゴリ）、JSON エクスポート／インポート（置換・統合）

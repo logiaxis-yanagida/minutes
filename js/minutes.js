@@ -40,22 +40,15 @@ function infoSection(meeting) {
   ].join('\n');
 }
 
-function preCheckSection(meeting) {
-  const items = list(meeting.preChecks).filter((p) => p && text(p.text));
-  const lines = items.map((p) => {
-    const note = text(p.note);
-    const head = `- [${p.checked ? 'x' : ' '}] ${indentContinuation(text(p.text))}`;
-    return note ? `${head} — メモ: ${indentContinuation(note)}` : head;
-  });
-  return ['## 事前確認事項', '', lines.length ? lines.join('\n') : NONE].join('\n');
-}
-
 function agendaSection(meeting) {
-  const items = list(meeting.agenda).filter((a) => a && (text(a.title) || text(a.memo)));
+  const items = list(meeting.agenda).filter((a) => a && (text(a.title) || text(a.detail) || text(a.memo)));
   if (!items.length) return ['## アジェンダ別メモ', '', NONE].join('\n');
   const blocks = items.map((a, i) => {
     const memo = text(a.memo);
-    return [`### ${i + 1}. ${text(a.title) || '（無題）'}`, '', memo ? normalizeBlock(memo) : '（メモなし）'].join('\n');
+    const detail = text(a.detail);
+    const head = [`### ${i + 1}. ${text(a.title) || '（無題）'}`, ''];
+    if (detail) head.push(`詳細: ${indentContinuation(detail)}`, '');
+    return [...head, memo ? normalizeBlock(memo) : '（メモなし）'].join('\n');
   });
   return ['## アジェンダ別メモ', '', blocks.join('\n\n')].join('\n');
 }
@@ -92,7 +85,6 @@ export function buildMinutesPrompt(meeting, settings) {
   const sections = [
     '# 会議メモ',
     infoSection(m),
-    preCheckSection(m),
     agendaSection(m),
     freeMemoSection(m),
     decisionSection(m),

@@ -1,4 +1,4 @@
-const VERSION = 'v0.1.1';
+const VERSION = 'v0.2.0';
 const CACHE_NAME = `minutes-${VERSION}`;
 
 const PRECACHE_URLS = [
