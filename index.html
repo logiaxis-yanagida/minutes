@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>議事録</title>
+  <link rel="stylesheet" href="./css/style.css">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#0f766e">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111318">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="議事録">
+  <script type="module" src="./js/pwa.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="app-heading">
+        <h1 class="app-title"><a href="#/" class="app-home">議事録</a></h1>
+        <p class="sync-status" id="sync-status" aria-live="polite"></p>
+      </div>
+      <button type="button" class="icon-btn" id="settings-btn" aria-label="設定" title="設定">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.4-2.5a7.9 7.9 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a8 8 0 0 0-1.7-1L15 3H9l-.4 2.7a8 8 0 0 0-1.7 1l-2.5-1-2 3.5L4.6 11a7.9 7.9 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a8 8 0 0 0 1.7 1L9 21h6l.4-2.7a8 8 0 0 0 1.7-1l2.5 1 2-3.5Z"/></svg>
+      </button>
+    </header>
+
+    <main class="list-view" id="list-view" aria-label="会議一覧">
+      <nav class="tabs" id="list-tabs" aria-label="会議の絞り込み">
+        <button type="button" class="tab is-active" data-filter="today" aria-pressed="true">今日</button>
+        <button type="button" class="tab" data-filter="upcoming" aria-pressed="false">予定</button>
+        <button type="button" class="tab" data-filter="past" aria-pressed="false">過去</button>
+        <button type="button" class="tab" data-filter="all" aria-pressed="false">すべて</button>
+      </nav>
+      <search class="search-bar">
+        <input type="search" id="search-input" class="search-input" placeholder="タイトル・場所・参加者・メモを検索" aria-label="会議を検索" enterkeyhint="search">
+      </search>
+      <ul class="meeting-list" id="meeting-list"></ul>
+      <p class="empty" id="list-empty" hidden></p>
+      <button type="button" class="fab" id="new-meeting-btn" aria-haspopup="dialog">＋ 新規会議</button>
+    </main>
+
+    <main class="detail-view" id="detail-view" aria-label="会議詳細" hidden>
+      <header class="detail-header">
+        <div class="detail-topbar">
+          <a href="#/" class="icon-btn back-btn" id="back-btn" aria-label="一覧に戻る" title="一覧に戻る">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.4 5.4 14 4l-8 8 8 8 1.4-1.4L8.8 12Z"/></svg>
+          </a>
+          <input type="text" id="meeting-title" class="title-input" aria-label="会議タイトル" placeholder="会議タイトル" data-key="meta-title">
+          <button type="button" class="icon-btn delete" id="delete-meeting-btn" aria-label="会議を削除" title="会議を削除">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm-3 6h12l-1 12H7L6 9Zm4 2v8h1.5v-8H10Zm3.5 0v8H15v-8h-1.5Z"/></svg>
+          </button>
+        </div>
+        <details class="meta-details" id="meta-details">
+          <summary class="meta-summary">
+            <span class="meta-when" id="meta-when"></span>
+            <span class="meta-where" id="meta-where"></span>
+          </summary>
+          <div class="meta-grid">
+            <label class="field">
+              <span>日付</span>
+              <input type="date" id="meeting-date" data-key="meta-date">
+            </label>
+            <label class="field">
+              <span>開始</span>
+              <input type="time" id="meeting-start" step="300" data-key="meta-start">
+            </label>
+            <label class="field">
+              <span>終了</span>
+              <input type="time" id="meeting-end" step="300" data-key="meta-end">
+            </label>
+            <label class="field field-wide">
+              <span>場所</span>
+              <input type="text" id="meeting-location" data-key="meta-location" placeholder="会議室・URL など">
+            </label>
+            <label class="field field-wide">
+              <span>参加者（カンマ区切り）</span>
+              <input type="text" id="meeting-attendees" data-key="meta-attendees" placeholder="田中, 鈴木">
+            </label>
+          </div>
+        </details>
+        <div class="status-row">
+          <label class="status-field">
+            <span>ステータス</span>
+            <select id="meeting-status">
+              <option value="準備中">準備中</option>
+              <option value="実施済">実施済</option>
+              <option value="議事録完了">議事録完了</option>
+            </select>
+          </label>
+        </div>
+        <nav class="tabs detail-tabs" id="detail-tabs" aria-label="会議の段階">
+          <button type="button" class="tab" data-tab="pre" aria-pressed="false">事前</button>
+          <button type="button" class="tab" data-tab="during" aria-pressed="false">会議中</button>
+          <button type="button" class="tab" data-tab="post" aria-pressed="false">事後</button>
+        </nav>
+      </header>
+
+      <div class="detail-body" id="detail-body"></div>
+
+      <section class="dock" aria-label="タスクのクイック追加">
+        <button type="button" class="mic-fab" id="mic-btn" aria-label="音声入力" title="音声入力" aria-pressed="false" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-3.1A7 7 0 0 0 19 11Z"/></svg>
+        </button>
+        <p class="voice-bar" id="voice-bar" aria-live="polite" hidden></p>
+        <form class="quick-task" id="quick-task-form" autocomplete="off">
+          <input type="text" id="quick-task-title" class="qt-title" placeholder="タスクを追加" aria-label="タスク名" enterkeyhint="done">
+          <input type="text" id="quick-task-assignee" class="qt-assignee" placeholder="担当" aria-label="担当">
+          <input type="date" id="quick-task-due" class="qt-due" aria-label="期限">
+          <button type="submit" class="btn primary qt-add">追加</button>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="sheet" id="create-dialog" aria-labelledby="create-title">
+    <form method="dialog" class="sheet-form">
+      <header class="sheet-header">
+        <h2 id="create-title">新規会議</h2>
+        <button type="submit" class="icon-btn" aria-label="閉じる" title="閉じる">×</button>
+      </header>
+      <div class="choice-list">
+        <button type="button" class="choice" id="create-from-calendar">
+          <strong>カレンダーから作成</strong>
+          <span>Googleカレンダーの予定を選んで作成します</span>
+        </button>
+        <button type="button" class="choice" id="create-manual">
+          <strong>手動で作成</strong>
+          <span>タイトルや日時を入力して作成します</span>
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="sheet" id="calendar-dialog" aria-labelledby="calendar-title">
+    <form method="dialog" class="sheet-form">
+      <header class="sheet-header">
+        <h2 id="calendar-title">カレンダーから作成</h2>
+        <button type="submit" class="icon-btn" aria-label="閉じる" title="閉じる">×</button>
+      </header>
+      <p class="hint" id="calendar-status" aria-live="polite"></p>
+      <div class="event-groups" id="event-groups"></div>
+    </form>
+  </dialog>
+
+  <dialog class="sheet" id="manual-dialog" aria-labelledby="manual-title">
+    <form class="sheet-form" id="manual-form" autocomplete="off">
+      <header class="sheet-header">
+        <h2 id="manual-title">手動で作成</h2>
+        <button type="button" class="icon-btn" id="manual-close" aria-label="閉じる" title="閉じる">×</button>
+      </header>
+      <label class="field">
+        <span>タイトル</span>
+        <input type="text" id="manual-title-input" required placeholder="例: 定例MTG">
+      </label>
+      <div class="meta-grid">
+        <label class="field">
+          <span>日付</span>
+          <input type="date" id="manual-date">
+        </label>
+        <label class="field">
+          <span>開始</span>
+          <input type="time" id="manual-start" step="300">
+        </label>
+        <label class="field">
+          <span>終了</span>
+          <input type="time" id="manual-end" step="300">
+        </label>
+      </div>
+      <label class="field">
+        <span>場所</span>
+        <input type="text" id="manual-location">
+      </label>
+      <label class="field">
+        <span>参加者（カンマ区切り）</span>
+        <input type="text" id="manual-attendees" placeholder="田中, 鈴木">
+      </label>
+      <div class="btn-row">
+        <button type="submit" class="btn primary">作成</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="sheet settings" id="settings-dialog" aria-labelledby="settings-title">
+    <form method="dialog" class="sheet-form">
+      <header class="sheet-header">
+        <h2 id="settings-title">設定</h2>
+        <button type="submit" class="icon-btn" aria-label="閉じる" title="閉じる">×</button>
+      </header>
+
+      <section class="settings-section">
+        <h3>テンプレート</h3>
+        <label class="field">
+          <span>事前確認事項（1行に1項目）</span>
+          <textarea id="tpl-prechecks" rows="5"></textarea>
+        </label>
+        <label class="field">
+          <span>アジェンダ（1行に1項目）</span>
+          <textarea id="tpl-agenda" rows="5"></textarea>
+        </label>
+        <p class="hint">新しく作成する会議に展開されます</p>
+      </section>
+
+      <section class="settings-section">
+        <h3>議事録化ルール</h3>
+        <label class="field">
+          <span>コピー時に先頭へ付ける要約ルール</span>
+          <textarea id="summary-rule" rows="10"></textarea>
+        </label>
+        <div class="btn-row">
+          <button type="button" class="btn" id="summary-reset-btn">初期値に戻す</button>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h3>Google（カレンダー・ドライブ同期）</h3>
+        <label class="field">
+          <span>OAuth クライアントID</span>
+          <input type="text" id="google-client-id" placeholder="xxxx.apps.googleusercontent.com" spellcheck="false">
+        </label>
+        <label class="field">
+          <span>カレンダーID</span>
+          <input type="text" id="google-calendar-id" placeholder="primary" spellcheck="false">
+        </label>
+        <div class="btn-row">
+          <button type="button" class="btn" id="google-signin-btn">サインイン</button>
+          <button type="button" class="btn" id="drive-sync-now">今すぐ同期</button>
+        </div>
+        <p class="hint" id="google-status"></p>
+        <p class="hint" id="drive-status" aria-live="polite"></p>
+      </section>
+
+      <section class="settings-section">
+        <h3>taskapp 連携</h3>
+        <label class="toggle">
+          <input type="checkbox" id="taskapp-enabled">
+          <span>会議のタスクを taskapp へ送信する</span>
+        </label>
+        <label class="field">
+          <span>送信先の既定カテゴリ</span>
+          <select id="taskapp-category"></select>
+        </label>
+        <p class="hint">カテゴリは同じ端末の taskapp から読み込みます</p>
+      </section>
+
+      <section class="settings-section" id="voice-section" hidden>
+        <h3>音声入力</h3>
+        <p class="hint">このブラウザは音声入力に対応していません。OSのキーボード音声入力を使ってください</p>
+      </section>
+
+      <section class="settings-section">
+        <h3>データ</h3>
+        <div class="btn-row">
+          <button type="button" class="btn" id="export-btn">JSONエクスポート</button>
+          <button type="button" class="btn" id="import-btn">JSONインポート</button>
+        </div>
+        <fieldset class="radio-row">
+          <legend>インポート方法</legend>
+          <label><input type="radio" name="import-mode" value="replace" checked> 置換</label>
+          <label><input type="radio" name="import-mode" value="merge"> 統合</label>
+        </fieldset>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+      </section>
+    </form>
+  </dialog>
+
+  <div class="toasts" id="toasts" aria-live="polite" popover="manual"></div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
