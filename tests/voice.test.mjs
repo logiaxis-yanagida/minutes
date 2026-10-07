@@ -99,7 +99,7 @@ test('onend で自動再開し、stop で停止する', async () => {
   assert.deepEqual(log.state, [true, false]);
 });
 
-test('no-speech と aborted は無視して再開する', async () => {
+test('no-speech は1回だけ通知して再開し、aborted は無視する', async () => {
   const { d, log } = setup();
   d.start();
   instances[0].error('no-speech');
@@ -107,7 +107,11 @@ test('no-speech と aborted は無視して再開する', async () => {
   instances[0].end();
   await wait(20);
   assert.equal(instances.length, 2);
-  assert.deepEqual(log.errors, []);
+  instances[1].error('no-speech');
+  instances[1].end();
+  await wait(20);
+  assert.equal(instances.length, 3);
+  assert.deepEqual(log.errors.map((e) => e[0]), ['no-speech']);
   d.stop();
   await wait(5);
 });

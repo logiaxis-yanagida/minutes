@@ -1,7 +1,7 @@
 const ERROR_MESSAGES = {
   'not-allowed': 'マイクの使用が許可されていません',
   'service-not-allowed': 'マイクの使用が許可されていません',
-  'no-speech': '音声が検出されませんでした',
+  'no-speech': '音声が検出されません。PCのマイク（入力デバイス）と音量、Chromeのマイク設定を確認してください。聞き取りは続けています',
   network: 'ネットワークエラーです',
   'audio-capture': 'マイクが見つかりません',
   aborted: '中断されました',
@@ -11,7 +11,7 @@ const ERROR_MESSAGES = {
 };
 
 const FATAL_ERRORS = new Set(['not-allowed', 'service-not-allowed', 'audio-capture']);
-const IGNORED_ERRORS = new Set(['no-speech', 'aborted']);
+const IGNORED_ERRORS = new Set(['aborted']);
 const RESTART_DELAY_MS = 250;
 const QUICK_END_MS = 1000;
 const MAX_FAILED_RESTARTS = 5;
@@ -63,6 +63,7 @@ export function createDictation({
   let failedRestarts = 0;
   let lastErrorCode = null;
   let lastInterim = '';
+  let noSpeechNotified = false;
 
   const call = (fn, ...args) => {
     if (typeof fn !== 'function') return;
@@ -160,6 +161,13 @@ export function createDictation({
       if (rec !== current) return;
       const code = event?.error || 'unknown';
       if (IGNORED_ERRORS.has(code)) return;
+      if (code === 'no-speech') {
+        if (!noSpeechNotified) {
+          noSpeechNotified = true;
+          emitError(code);
+        }
+        return;
+      }
       if (FATAL_ERRORS.has(code)) {
         fatal = true;
         emitError(code);
@@ -207,6 +215,7 @@ export function createDictation({
       failedRestarts = 0;
       lastErrorCode = null;
       lastInterim = '';
+      noSpeechNotified = false;
       call(onStateChange, true);
       launch();
     },
