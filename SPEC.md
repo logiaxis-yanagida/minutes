@@ -71,7 +71,7 @@ Settings {
 - id は `crypto.randomUUID()`（フォールバックあり）
 - マージ単位は Meeting（`updatedAt` 新しい方が勝ち、同値は local）。削除はトゥームストーン `deleted[id]`（90日で破棄）。アルゴリズムは taskapp `store.js` の `mergeCollection` / `mergeDeletedMaps` / `isTombstoned` と同一
 - 設定のうち `template` と `summaryRule` は同期対象（`settingsUpdatedAt` で新しい方を採用）。`oauthClientId` / `calendarId` / `taskappIntegration` は端末ローカル
-- 初期テンプレ・要約ルールは元仕様 6・7 章の通り
+- 要約ルールの初期値は元仕様 7 章の通り。アジェンダのテンプレ初期値は空で、空なら項目名が空のアジェンダを3つ作る（旧既定値が保存済みの端末は空に置き換える）
 
 ## 5. モジュール契約
 

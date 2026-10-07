@@ -13,13 +13,16 @@ export const DEFAULT_TEMPLATE = Object.freeze({
     '事前に確認・準備すべき資料',
     '自分から確認したいこと',
   ]),
-  agenda: Object.freeze([
-    '前回の振り返り',
-    '本題',
-    '決定事項の確認',
-    '次回までのタスク・次回日程',
-  ]),
+  agenda: Object.freeze([]),
 });
+
+export const BLANK_AGENDA_COUNT = 3;
+
+const LEGACY_DEFAULT_AGENDA = ['前回の振り返り', '本題', '決定事項の確認', '次回までのタスク・次回日程'];
+
+function isLegacyDefaultAgenda(list) {
+  return list.length === LEGACY_DEFAULT_AGENDA.length && list.every((t, i) => t === LEGACY_DEFAULT_AGENDA[i]);
+}
 
 export const DEFAULT_SUMMARY_RULE = `以下の会議メモをもとに議事録を作成してください。
 
@@ -92,7 +95,7 @@ function normalizeTemplate(raw) {
   if (!raw || typeof raw !== 'object') return base;
   return {
     preChecks: Array.isArray(raw.preChecks) ? stringList(raw.preChecks) : base.preChecks,
-    agenda: Array.isArray(raw.agenda) ? stringList(raw.agenda) : base.agenda,
+    agenda: Array.isArray(raw.agenda) && !isLegacyDefaultAgenda(stringList(raw.agenda)) ? stringList(raw.agenda) : base.agenda,
   };
 }
 
@@ -321,7 +324,8 @@ function isNewerShared(remoteAt, localAt) {
 function expandTemplate(template) {
   return {
     preChecks: template.preChecks.map((text) => ({ id: newId(), text, checked: false, note: '' })),
-    agenda: template.agenda.map((title) => ({ id: newId(), title, detail: '', memo: '' })),
+    agenda: (template.agenda.length ? template.agenda : Array(BLANK_AGENDA_COUNT).fill(''))
+      .map((title) => ({ id: newId(), title, detail: '', memo: '' })),
   };
 }
 

@@ -1,6 +1,6 @@
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { store, DEFAULT_TEMPLATE, DEFAULT_SUMMARY_RULE, MEETING_STATUSES } from '../js/store.js';
+import { store, DEFAULT_TEMPLATE, DEFAULT_SUMMARY_RULE, MEETING_STATUSES, BLANK_AGENDA_COUNT } from '../js/store.js';
 
 const BASE_AT = '2026-01-01T00:00:00.000Z';
 
@@ -49,14 +49,13 @@ describe('初期値', () => {
     assert.deepEqual(s.template.preChecks, [
       '会議の目的・ゴール', '前回からの持ち越し事項', '事前に確認・準備すべき資料', '自分から確認したいこと',
     ]);
-    assert.deepEqual(s.template.agenda, ['前回の振り返り', '本題', '決定事項の確認', '次回までのタスク・次回日程']);
+    assert.deepEqual(s.template.agenda, []);
     assert.equal(s.summaryRule, DEFAULT_SUMMARY_RULE);
     assert.ok(s.summaryRule.startsWith('以下の会議メモをもとに議事録を作成してください。'));
     assert.ok(s.summaryRule.endsWith('- 敬語・常体の統一：常体'));
     assert.equal(s.calendarId, 'primary');
     assert.ok(s.oauthClientId.endsWith('.apps.googleusercontent.com'));
     assert.deepEqual(s.taskappIntegration, { enabled: true, defaultCategoryId: null });
-    assert.equal(DEFAULT_TEMPLATE.agenda.length, 4);
     assert.deepEqual(MEETING_STATUSES, ['準備中', '実施済', '議事録完了']);
   });
 });
@@ -69,7 +68,8 @@ describe('createMeeting', () => {
     assert.equal(m.title, '定例');
     assert.equal(m.status, '準備中');
     assert.deepEqual(m.preChecks.map((p) => p.text), DEFAULT_TEMPLATE.preChecks);
-    assert.deepEqual(m.agenda.map((a) => a.title), DEFAULT_TEMPLATE.agenda);
+    assert.equal(m.agenda.length, BLANK_AGENDA_COUNT);
+    for (const a of m.agenda) assert.equal(a.title, '');
     for (const p of m.preChecks) {
       assert.equal(p.checked, false);
       assert.equal(p.note, '');
@@ -82,6 +82,12 @@ describe('createMeeting', () => {
     assert.deepEqual(m.tasks, []);
     assert.equal(m.createdAt, m.updatedAt);
     assert.equal(find(m.id), m);
+  });
+
+  test('旧既定のアジェンダが保存された端末は空欄に置き換える', () => {
+    reset({ settings: { template: { agenda: ['前回の振り返り', '本題', '決定事項の確認', '次回までのタスク・次回日程'] } } });
+    assert.deepEqual(store.getSettings().template.agenda, []);
+    assert.ok(store.createMeeting({}).agenda.every((a) => a.title === ''));
   });
 
   test('編集後のテンプレが新しい会議に使われる', () => {
