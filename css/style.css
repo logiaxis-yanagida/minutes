@@ -492,8 +492,9 @@ textarea:focus {
   }
 }
 
+/* ドック上に浮くマイクボタン（64px＋間隔12px）に最下部のパネルが隠れないよう余白を取る */
 .detail-body {
-  padding-bottom: 16px;
+  padding-bottom: 92px;
 }
 
 .panel {
