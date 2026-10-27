@@ -6,7 +6,7 @@ import { google } from './google.js';
 import { listEvents } from './calendar.js';
 import { drive } from './drive.js';
 import { createSync } from './sync.js';
-import { sendTasks, readTaskappCategories } from './taskbridge.js';
+import { sendTasks, readTaskappCategories, buildClipboardPayload } from './taskbridge.js';
 import { DEFAULT_GCAL_CALENDAR_ID } from './config.js';
 
 const SAVE_DELAY_MS = 1500;
@@ -934,13 +934,24 @@ function buildTasksPanel({ withSend = false } = {}) {
   if (withSend) {
     const unsent = tasks.filter((t) => !t.sentToTaskapp && t.title.trim()).length;
     const enabled = taskappEnabled();
-    headExtra = h('button', {
-      type: 'button',
-      class: 'btn small primary',
-      disabled: !enabled || unsent === 0,
-      dataset: { key: 'task-send-all' },
-      onclick: () => sendToTaskapp(null),
-    }, unsent > 0 ? `未送信${unsent}件を一括送信` : '一括送信');
+    headExtra = h(
+      'div',
+      { class: 'head-actions' },
+      h('button', {
+        type: 'button',
+        class: 'btn small',
+        disabled: !tasks.some((t) => t.title.trim()),
+        dataset: { key: 'task-copy' },
+        onclick: copyTasksForTaskapp,
+      }, 'taskapp用にコピー'),
+      h('button', {
+        type: 'button',
+        class: 'btn small primary',
+        disabled: !enabled || unsent === 0,
+        dataset: { key: 'task-send-all' },
+        onclick: () => sendToTaskapp(null),
+      }, unsent > 0 ? `未送信${unsent}件を一括送信` : '一括送信'),
+    );
     if (!enabled) extra.push(h('p', { class: 'hint' }, 'taskapp 連携は設定で有効にできます'));
   }
   return panel(
@@ -1087,6 +1098,31 @@ function buildPost() {
       showToast('最終議事録を保存しました（ステータス: 議事録完了）');
     },
   }, '保存');
+  const pasteBtn = h('button', {
+    type: 'button',
+    class: 'btn',
+    dataset: { key: 'minutes-paste' },
+    onclick: async () => {
+      if (!ui.draft) return;
+      let text = '';
+      try {
+        if (navigator.clipboard?.readText) text = await navigator.clipboard.readText();
+      } catch (err) {
+        console.error(err);
+      }
+      if (!text.trim()) {
+        showToast('クリップボードを読み取れませんでした。欄を長押しして「ペースト」してください', { error: true });
+        minutes.focus();
+        return;
+      }
+      if (minutes.value.trim() && !window.confirm('入力済みの最終議事録をクリップボードの内容で置き換えますか？')) return;
+      minutes.value = text;
+      ui.draft.minutes = text;
+      markDirty('minutes');
+      autogrow(minutes);
+      showToast('貼り付けました。内容を確認して「保存」を押してください');
+    },
+  }, 'クリップボードから貼り付け');
 
   return [
     panel(
@@ -1101,7 +1137,7 @@ function buildPost() {
       {},
       h('p', { class: 'hint' }, 'Claudeに貼り付けて生成した議事録をここに貼り戻してください'),
       minutes,
-      h('div', { class: 'btn-row' }, saveBtn),
+      h('div', { class: 'btn-row' }, pasteBtn, saveBtn),
     ),
     buildTasksPanel({ withSend: true }),
   ];
@@ -1161,6 +1197,15 @@ function addQuickTask(e) {
   el.qtTitle.focus();
   renderBody();
   showToast('タスクを追加しました', { duration: 2000 });
+}
+
+async function copyTasksForTaskapp() {
+  flushAll();
+  const meeting = ui.draft?.id ? store.getMeeting(ui.draft.id) : null;
+  if (!meeting) return;
+  const ok = await copyText(buildClipboardPayload(meeting, meeting.tasks, store.getSettings()));
+  if (ok) showToast('タスクをコピーしました。taskapp を開いて「貼り付けて取り込み」を押してください', { duration: 8000 });
+  else showToast('コピーできませんでした', { error: true });
 }
 
 async function sendToTaskapp(ids) {

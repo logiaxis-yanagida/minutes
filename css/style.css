@@ -512,6 +512,13 @@ textarea:focus {
   margin-bottom: 8px;
 }
 
+.head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .panel h2,
 .panel-title {
   margin: 0;

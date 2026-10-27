@@ -31,11 +31,13 @@ export function buildMemo(meeting, task) {
 }
 
 export function toInboxItem(meeting, task, settings, createdAt = new Date().toISOString()) {
+  const memo = buildMemo(meeting, task);
   return {
     id: task.id,
     title: String(task.title || '').trim(),
     due: task.due || null,
-    memo: buildMemo(meeting, task),
+    memo,
+    note: memo,
     categoryId: settings?.taskappIntegration?.defaultCategoryId || null,
     source: 'minutes',
     meetingId: meeting?.id ?? null,
@@ -89,6 +91,14 @@ export async function sendTasks(meeting, tasks, settings, { google, drive, stora
     }
   }
   return { sent: targets, driveOk };
+}
+
+// taskapp の「貼り付けて取り込み」用。taskapp 側が id で重複を除くので送信済みも含める
+export function buildClipboardPayload(meeting, tasks, settings, createdAt = new Date().toISOString()) {
+  const items = (Array.isArray(tasks) ? tasks : [])
+    .filter((t) => t && t.id && String(t.title || '').trim())
+    .map((t) => toInboxItem(meeting, t, settings, createdAt));
+  return JSON.stringify({ version: 1, items });
 }
 
 export function readTaskappCategories(storage = defaultStorage()) {

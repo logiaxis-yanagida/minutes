@@ -122,10 +122,11 @@ taskapp `gcal.js` の認証部分を移植。SCOPE は `https://www.googleapis.c
 ### taskbridge.js（taskapp 連携）
 - localStorage キー `minutes.taskappInbox`：`InboxItem[]`
 - Drive appDataFolder ファイル `taskapp-inbox-<id>.json`：`InboxItem` 1件
-- `InboxItem { id, title, due: YMD|null, memo, categoryId: string|null, source: 'minutes', meetingId, createdAt }`
+- `InboxItem { id, title, due: YMD|null, memo, note（memo と同値。taskapp の貼り付け取り込み形式に合わせた別名）, categoryId: string|null, source: 'minutes', meetingId, createdAt }`
   - `id` は minutes 側タスク id をそのまま使う（taskapp 側のタスク id になる → 二重取り込み防止）
   - `memo` 例：`元会議：定例MTG（2026/10/07）／担当：田中`
 - `sendTasks(meeting, tasks, settings, { google, drive, storage? })` → `{ sent: Task[], driveOk: bool }`。未送信のみ対象。端末内 inbox へ追記、サインイン済みなら Drive ファイルを作成。成功したら呼び出し側で `sentToTaskapp=true, taskappId=id` を保存
+- `buildClipboardPayload(meeting, tasks, settings)` → `JSON.stringify({ version: 1, items: InboxItem[] })`。タイトルのある全タスク（送信済み含む。taskapp 側が id で重複を除く）。iPad などホーム画面アプリ同士で端末内 inbox を共有できない環境向け（2026-10-27 追加、`../3.タスク管理/SPEC_ショートカット連携.md` 4.4）
 - `readTaskappCategories()` → taskapp の `localStorage['taskapp.v1'].categories`（読み取りのみ。設定のカテゴリ選択に使う）
 
 ## 6. taskapp 側の改修
@@ -145,7 +146,7 @@ taskapp `gcal.js` の認証部分を移植。SCOPE は `https://www.googleapis.c
 - 会議詳細：上部に会議情報（編集可）とステータス選択、タブ「アジェンダ」「会議中」「事後」
   - アジェンダ：各項目のタイトル＋詳細（複数行）の編集、追加・削除・上下移動、カレンダー説明文（参考）。タスクのクイック追加は出さない
   - 会議中：アジェンダごとにタイトル・詳細（読み取り表示）とメモ（大きな textarea、音声入力可）、自由メモ、決定事項、タスク
-  - 事後：「議事録化用にコピー」、プレビュー、最終議事録の貼り戻し（保存でステータス「議事録完了」）、タスク一覧と taskapp 送信（個別・一括）
+  - 事後：「議事録化用にコピー」、プレビュー、最終議事録の貼り戻し（「クリップボードから貼り付け」ボタンで `navigator.clipboard.readText()`、入力済みなら確認後に置換。読めなければ欄を長押しでペーストを案内。保存でステータス「議事録完了」）、タスク一覧と taskapp 送信（個別・一括）、「taskapp用にコピー」（taskapp の「貼り付けて取り込み」用）
   - タスクのクイック追加は会議中・事後タブの下部
   - 幅 900px 以上：会議中タブは左にアジェンダ一覧、右に選択アジェンダのメモ＋自由メモ等。それ未満は縦1カラム
 - マイクボタン：画面右下に浮遊（会議詳細で表示）。押すと直近フォーカス欄に挿入

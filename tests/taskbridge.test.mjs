@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sendTasks, readTaskappCategories, buildMemo } from '../js/taskbridge.js';
+import { sendTasks, readTaskappCategories, buildMemo, buildClipboardPayload } from '../js/taskbridge.js';
 
 function memoryStorage(initial = {}) {
   const data = new Map(Object.entries(initial));
@@ -94,4 +94,26 @@ test('readTaskappCategories: taskapp.v1 から読み取り、壊れていれば�
   assert.deepEqual(readTaskappCategories(memoryStorage({ 'taskapp.v1': JSON.stringify({ categories: cats }) })), cats);
   assert.deepEqual(readTaskappCategories(memoryStorage({ 'taskapp.v1': '{bad' })), []);
   assert.deepEqual(readTaskappCategories(memoryStorage()), []);
+});
+
+test('buildClipboardPayload: taskapp の inbox 形式で、タイトルのあるタスクを送信済みも含めて出力する', () => {
+  const tasks = [
+    { id: 't1', title: '資料作成', assignee: '田中', due: '2026-10-10', sentToTaskapp: false },
+    { id: 't2', title: '送信済み', assignee: '', due: null, sentToTaskapp: true },
+    { id: 't3', title: '  ', assignee: '', due: null, sentToTaskapp: false },
+  ];
+  const payload = JSON.parse(buildClipboardPayload(meeting, tasks, settings, '2026-10-27T00:00:00.000Z'));
+  assert.equal(payload.version, 1);
+  assert.deepEqual(payload.items.map((i) => i.id), ['t1', 't2']);
+  assert.deepEqual(payload.items[0], {
+    id: 't1',
+    title: '資料作成',
+    due: '2026-10-10',
+    memo: '元会議：定例MTG（2026/10/07）／担当：田中',
+    note: '元会議：定例MTG（2026/10/07）／担当：田中',
+    categoryId: 'cat-1',
+    source: 'minutes',
+    meetingId: 'm1',
+    createdAt: '2026-10-27T00:00:00.000Z',
+  });
 });
