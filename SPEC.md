@@ -34,6 +34,7 @@ js/calendar.js      Google カレンダー読込
 js/drive.js         Drive appDataFolder 入出力
 js/sync.js          Drive 同期オーケストレーション
 js/taskbridge.js    taskapp への送信
+js/lineeditor.js    箇条書き入力欄（行頭記号の継続・ぶら下げ字下げ）
 js/app.js           画面・イベント（エントリポイント）
 tests/*.test.mjs
 ```
@@ -153,3 +154,14 @@ taskapp `gcal.js` の認証部分を移植。SCOPE は `https://www.googleapis.c
 - 設定（`<dialog>`）：テンプレ編集、要約ルール、Google（クライアントID・カレンダーID・サインイン・今すぐ同期）、taskapp 連携（有効・既定カテゴリ）、JSON エクスポート／インポート（置換・統合）
 - 自動保存：入力 1.5 秒デバウンス、`pagehide` / `visibilitychange(hidden)` で flush
 - ルーティング：`location.hash`（`#/`、`#/m/<id>/<tab>`）
+
+## 8. 箇条書き入力欄（lineeditor.js）
+
+- 対象：アジェンダの詳細、会議中のアジェンダ別メモ、自由メモ。データは従来どおりプレーンテキスト（改行区切り）
+- 1行＝1つの `div.le-line`（contenteditable）。行頭の字下げ（全角スペース）＋記号（・■□●○◆◇※→、`- `、`1.` `1）` `（1）` など）を接頭辞とし、その幅を canvas で計測して `--hang` に設定、`padding-left`＋負の `text-indent` で折り返し行を本文の先頭に揃える
+- Enter：記号を次の行に引き継ぐ（番号は+1、■は引き継がない）。記号だけの行で Enter すると記号を外す。Shift+Enter は記号なしで改行
+- Tab／Shift+Tab：全角スペース1つ分の字下げ／戻し
+- 入力中は画面下部に記号ボタン（・ ■ 1. → ※ ／ 字下げ 戻す）を表示。スマホでは1行に収め、タスク追加欄を隠す
+- 貼り付けはプレーンテキストのみ。IME変換中は整形処理をしない
+- 会議中タブのアジェンダ詳細（読み取り表示）も同じ行整形で表示する
+

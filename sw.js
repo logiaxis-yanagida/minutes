@@ -1,4 +1,4 @@
-const VERSION = 'v0.2.3';
+const VERSION = 'v0.3.0';
 const CACHE_NAME = `minutes-${VERSION}`;
 
 const PRECACHE_URLS = [
@@ -18,6 +18,7 @@ const PRECACHE_URLS = [
   './js/drive.js',
   './js/sync.js',
   './js/taskbridge.js',
+  './js/lineeditor.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-512.png',

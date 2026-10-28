@@ -8,6 +8,7 @@ import { drive } from './drive.js';
 import { createSync } from './sync.js';
 import { sendTasks, readTaskappCategories, buildClipboardPayload } from './taskbridge.js';
 import { DEFAULT_GCAL_CALENDAR_ID } from './config.js';
+import { createLineEditor, renderFormatted, refreshHangs, initLineEditors } from './lineeditor.js';
 
 const SAVE_DELAY_MS = 1500;
 const TABS = ['pre', 'during', 'post'];
@@ -40,6 +41,7 @@ const el = {
   body: $('detail-body'),
   mic: $('mic-btn'),
   voiceBar: $('voice-bar'),
+  formatBar: $('format-bar'),
   qtForm: $('quick-task-form'),
   qtTitle: $('quick-task-title'),
   qtAssignee: $('quick-task-assignee'),
@@ -290,7 +292,7 @@ function editItem(listKey, id, fn) {
 
 function isEditingInDetail() {
   const a = document.activeElement;
-  return Boolean(a && el.detailView.contains(a) && a.matches('input, textarea, select'));
+  return Boolean(a && el.detailView.contains(a) && a.matches('input, textarea, select, .line-editor'));
 }
 
 function onStoreChange() {
@@ -668,18 +670,15 @@ function agendaEditRow(item, index, length) {
       x.title = title.value;
     }),
   });
-  const detail = h('textarea', {
-    class: 'detail-area autogrow',
+  const detail = createLineEditor({
     value: item.detail,
     placeholder: '詳細（論点・確認したいこと・資料など）',
-    'aria-label': `アジェンダ${index + 1}の詳細`,
-    dataset: { key: `ag-detail-${id}` },
-    oninput: () => {
-      editItem('agenda', id, (x) => {
-        x.detail = detail.value;
-      });
-      autogrow(detail);
-    },
+    label: `アジェンダ${index + 1}の詳細`,
+    key: `ag-detail-${id}`,
+    className: 'detail-area',
+    onChange: (v) => editItem('agenda', id, (x) => {
+      x.detail = v;
+    }),
   });
   return h(
     'li',
@@ -737,28 +736,27 @@ function selectAgenda(id, { scroll = false } = {}) {
   const art = el.body.querySelector(`.agenda-memo[data-agenda-id="${CSS.escape(id)}"]`);
   if (!art) return;
   art.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  const ta = art.querySelector('textarea');
-  if (ta) ta.focus({ preventScroll: true });
+  const editor = art.querySelector('.line-editor');
+  if (editor) editor.lineEditor.focusEnd();
 }
 
 function agendaMemo(item, index) {
   const id = item.id;
-  const ta = h('textarea', {
-    class: 'memo-area autogrow',
+  const editor = createLineEditor({
     value: item.memo,
     placeholder: 'メモ・議事録（マイクボタンで音声入力できます）',
-    'aria-label': `${item.title || 'アジェンダ'}のメモ`,
-    dataset: { key: `ag-memo-${id}` },
-    oninput: () => {
+    label: `${item.title || 'アジェンダ'}のメモ`,
+    key: `ag-memo-${id}`,
+    className: 'memo-area',
+    onChange: (v) => {
       editItem('agenda', id, (x) => {
-        x.memo = ta.value;
+        x.memo = v;
       });
-      autogrow(ta);
       const nav = el.body.querySelector(`.agenda-nav-btn[data-agenda-id="${CSS.escape(id)}"]`);
-      if (nav) nav.classList.toggle('has-memo', Boolean(ta.value.trim()));
+      if (nav) nav.classList.toggle('has-memo', Boolean(v.trim()));
     },
-    onfocus: () => selectAgenda(id),
   });
+  editor.addEventListener('focus', () => selectAgenda(id));
   return h(
     'article',
     {
@@ -766,26 +764,25 @@ function agendaMemo(item, index) {
       dataset: { agendaId: id },
     },
     h('h3', { class: 'panel-title' }, `${index + 1}. ${item.title || '（無題）'}`),
-    item.detail && item.detail.trim() ? h('p', { class: 'agenda-detail' }, item.detail) : null,
-    ta,
+    item.detail && item.detail.trim() ? renderFormatted(item.detail, 'agenda-detail') : null,
+    editor,
   );
 }
 
 function memoPanel(title, key, field, placeholder) {
-  const ta = h('textarea', {
-    class: 'memo-area small autogrow',
+  const editor = createLineEditor({
     value: ui.draft[field],
     placeholder,
-    'aria-label': title,
-    dataset: { key },
-    oninput: () => {
+    label: title,
+    key,
+    className: 'memo-area small',
+    onChange: (v) => {
       if (!ui.draft) return;
-      ui.draft[field] = ta.value;
+      ui.draft[field] = v;
       markDirty(field);
-      autogrow(ta);
     },
   });
-  return panel(title, {}, ta);
+  return panel(title, {}, editor);
 }
 
 function buildDecisions() {
@@ -1149,7 +1146,9 @@ function renderBody({ focusKey = null } = {}) {
   const activeInBody = active && el.body.contains(active);
   const key = focusKey || (activeInBody ? active.dataset.key : null);
   let selection = null;
-  if (!focusKey && activeInBody && typeof active.selectionStart === 'number') {
+  if (!focusKey && activeInBody && active.lineEditor) {
+    selection = active.lineEditor.getCaretOffset();
+  } else if (!focusKey && activeInBody && typeof active.selectionStart === 'number') {
     selection = [active.selectionStart, active.selectionEnd];
   }
   let nodes;
@@ -1158,11 +1157,14 @@ function renderBody({ focusKey = null } = {}) {
   else nodes = buildPre();
   el.body.replaceChildren(...nodes);
   autogrowAll();
+  refreshHangs(el.body);
   if (key) {
     const target = el.body.querySelector(`[data-key="${CSS.escape(key)}"]`);
     if (target && !target.disabled) {
       target.focus({ preventScroll: true });
-      if (selection && typeof target.setSelectionRange === 'function') {
+      if (selection && target.lineEditor) {
+        target.lineEditor.setCaretOffset(selection[0], selection[1]);
+      } else if (selection && typeof target.setSelectionRange === 'function') {
         try {
           target.setSelectionRange(selection[0], selection[1]);
         } catch {}
@@ -1260,7 +1262,7 @@ async function sendToTaskapp(ids) {
 function trackField(e) {
   const t = e.target;
   if (!(t instanceof HTMLElement) || !el.detailView.contains(t)) return;
-  if (t.matches('textarea, input[type="text"]')) {
+  if (t.matches('textarea, input[type="text"], .line-editor')) {
     ui.lastField = t;
     ui.lastFieldKey = t.dataset.key || null;
   }
@@ -1287,11 +1289,42 @@ function insertAtCaret(field, text) {
   field.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
+function onEditorFocus(e) {
+  if (!(e.target instanceof HTMLElement) || !e.target.lineEditor) return;
+  ui.activeEditor = e.target;
+  el.formatBar.hidden = false;
+}
+
+function onEditorBlur(e) {
+  if (!e.target.lineEditor) return;
+  if (e.relatedTarget && el.formatBar.contains(e.relatedTarget)) return;
+  setTimeout(() => {
+    const a = document.activeElement;
+    if (!(a && a.lineEditor) && !el.formatBar.contains(a)) el.formatBar.hidden = true;
+  }, 0);
+}
+
+function onFormatClick(e) {
+  const btn = e.target.closest('.fmt-btn');
+  const target = ui.activeEditor;
+  if (!btn || !target || !target.isConnected) return;
+  const ed = target.lineEditor;
+  const { fmt, value } = btn.dataset;
+  if (fmt === 'marker') ed.toggleMarker(value);
+  else if (fmt === 'insert') ed.insertText(value);
+  else if (fmt === 'indent') ed.indent();
+  else if (fmt === 'outdent') ed.outdent();
+}
+
 function insertDictation(text) {
   if (!text || ui.view !== 'detail' || !ui.draft) return;
   const field = resolveLastField()
-    || el.body.querySelector('.agenda-memo textarea')
+    || el.body.querySelector('.agenda-memo .line-editor')
     || el.body.querySelector('[data-key="free-memo"]');
+  if (field && field.lineEditor) {
+    field.lineEditor.insertText(text);
+    return;
+  }
   if (field) {
     insertAtCaret(field, text);
     return;
@@ -1745,6 +1778,12 @@ function bindEvents() {
   el.qtForm.addEventListener('submit', addQuickTask);
 
   el.detailView.addEventListener('focusin', trackField);
+  el.detailView.addEventListener('focusin', onEditorFocus);
+  el.detailView.addEventListener('focusout', onEditorBlur);
+  for (const type of ['pointerdown', 'mousedown']) {
+    el.formatBar.addEventListener(type, (e) => e.preventDefault());
+  }
+  el.formatBar.addEventListener('click', onFormatClick);
   el.detailView.addEventListener('focusout', () => {
     setTimeout(() => {
       if (!ui.staleDetail || !ui.draft || isEditingInDetail()) return;
@@ -1844,6 +1883,7 @@ function initGoogle() {
 }
 
 function init() {
+  initLineEditors();
   initGoogle();
   initVoice();
   bindEvents();

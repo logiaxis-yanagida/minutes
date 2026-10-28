@@ -1207,3 +1207,118 @@ textarea:focus {
   left: -9999px;
   opacity: 0;
 }
+
+/* 箇条書き入力欄 */
+
+.line-editor {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  outline: none;
+  cursor: text;
+}
+
+.line-editor:focus {
+  border-color: var(--accent);
+}
+
+.line-editor.is-empty::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  right: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.le-line {
+  padding-left: var(--hang, 0px);
+  text-indent: calc(-1 * var(--hang, 0px));
+  min-height: 1.6em;
+}
+
+.le-line.le-heading {
+  font-weight: 700;
+}
+
+.line-editor.memo-area {
+  min-height: 8rem;
+}
+
+.line-editor.memo-area.small {
+  min-height: 5rem;
+}
+
+.line-editor.detail-area {
+  min-height: 4.5rem;
+  font-size: 0.95rem;
+}
+
+.le-view.agenda-detail {
+  white-space: pre-wrap;
+}
+
+.format-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 1200px;
+  margin: 0 auto 8px;
+}
+
+.format-bar[hidden] {
+  display: none;
+}
+
+.fmt-btn {
+  min-width: var(--tap);
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.fmt-btn.wide {
+  font-size: 0.9rem;
+}
+
+.fmt-btn:hover,
+.fmt-btn:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+@media (max-width: 640px) {
+  .format-bar {
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+
+  .fmt-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 2px;
+  }
+
+  .fmt-btn.wide {
+    flex-grow: 1.6;
+    font-size: 0.8rem;
+  }
+
+  .dock:has(.format-bar:not([hidden])) .quick-task {
+    display: none;
+  }
+}

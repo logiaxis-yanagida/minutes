@@ -106,6 +106,16 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-3.1A7 7 0 0 0 19 11Z"/></svg>
         </button>
         <p class="voice-bar" id="voice-bar" aria-live="polite" hidden></p>
+        <div class="format-bar" id="format-bar" role="toolbar" aria-label="箇条書き" hidden>
+          <button type="button" class="fmt-btn" data-fmt="marker" data-value="・" title="中黒（もう一度押すと外す）">・</button>
+          <button type="button" class="fmt-btn" data-fmt="marker" data-value="■" title="見出し（もう一度押すと外す）">■</button>
+          <button type="button" class="fmt-btn" data-fmt="marker" data-value="1." title="番号（Enterで次の番号）">1.</button>
+          <button type="button" class="fmt-btn" data-fmt="marker" data-value="→" title="矢印">→</button>
+          <button type="button" class="fmt-btn" data-fmt="marker" data-value="※" title="注記">※</button>
+          <button type="button" class="fmt-btn" data-fmt="insert" data-value="／" title="／を入力">／</button>
+          <button type="button" class="fmt-btn wide" data-fmt="indent" title="字下げ（Tab）">字下げ</button>
+          <button type="button" class="fmt-btn wide" data-fmt="outdent" title="字下げを戻す（Shift+Tab）">戻す</button>
+        </div>
         <form class="quick-task" id="quick-task-form" autocomplete="off">
           <input type="text" id="quick-task-title" class="qt-title" placeholder="タスクを追加" aria-label="タスク名" enterkeyhint="done">
           <input type="text" id="quick-task-assignee" class="qt-assignee" placeholder="担当" aria-label="担当">
